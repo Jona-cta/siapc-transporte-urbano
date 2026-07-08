@@ -1,0 +1,26 @@
+# === Entorno local (no se publica) ===
+# Valores del entorno local. Un clon usa los defaults de docker-compose.yml.
+.env
+
+# === Datos reales: NUNCA se publican ===
+# Privacidad (validaciones, placas y conductores reales) + tamaño (>100MB de GitHub).
+_data_local/
+*.sql.gz
+
+# === Imágenes reales del cliente ===
+perfil_usuario/img/logo-cta.png
+perfil_usuario/img/buses.jpg
+
+# === Logs generados en tiempo de ejecución ===
+*.log
+**/error_log
+
+# === Material del curso (PDFs) — no es código del proyecto ===
+documentos/
+
+# === Sistema operativo / editores / herramientas ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
