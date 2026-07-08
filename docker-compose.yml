@@ -1,0 +1,67 @@
+# SIAPC - entorno de desarrollo con Docker
+# Levanta: PHP 8.2 + Apache, MySQL 8 y phpMyAdmin.
+# El proyecto se sirve bajo /bd_op/ porque el codigo usa rutas absolutas (/bd_op/perfil_usuario/...).
+#
+#   Arrancar:   docker compose up -d --build
+#   App:        http://localhost:8080/bd_op/perfil_usuario/login.php
+#   phpMyAdmin: http://localhost:8081   (servidor: db, usuario/clave segun .env)
+#   Parar:      docker compose down          (agrega -v para borrar tambien la BD)
+
+services:
+  web:
+    build: .
+    container_name: siapc_web
+    ports:
+      - "8080:80"
+    volumes:
+      # Monta TODO el proyecto bajo /bd_op para respetar las rutas absolutas del codigo
+      - ./:/var/www/html/bd_op
+    environment:
+      # Estas variables las lee conexion.php (getenv con fallback a valores locales)
+      DB_HOST: db
+      DB_USER: ${DB_USER:-siapc}
+      DB_PASS: ${DB_PASS:-siapc}
+      DB_NAME: ${DB_NAME:-turbano_bd_op}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    # MariaDB porque el dump proviene de MariaDB 11.4 (evita problemas de dialecto)
+    image: mariadb:11.4
+    container_name: siapc_db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:-root}
+      MYSQL_DATABASE: ${DB_NAME:-turbano_bd_op}
+      MYSQL_USER: ${DB_USER:-siapc}
+      MYSQL_PASSWORD: ${DB_PASS:-siapc}
+    ports:
+      # 3307 en el host para no chocar con un MySQL/XAMPP local (3306)
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      # Todo .sql aqui se importa SOLO la primera vez (cuando el volumen esta vacio)
+      - ./_dbinit:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      # Margen amplio: importar el dump de ~238 MB puede tardar varios minutos
+      start_period: 900s
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: siapc_pma
+    environment:
+      PMA_HOST: db
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  db_data:
