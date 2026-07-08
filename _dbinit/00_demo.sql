@@ -1,17 +1,5 @@
--- ============================================================
--- SIAPC - Semilla DEMO para clonar y levantar el proyecto
--- ------------------------------------------------------------
--- Contiene SOLO la estructura de las tablas + datos MINIMOS
--- (catalogos, 1 admin demo y el registro de modulos).
--- NO incluye datos reales (validaciones, paraderos, usuarios).
---
--- Al levantar con Docker:
---   Usuario: admin
---   Clave:   admin123
---
--- Las pantallas de analisis apareceran vacias hasta que cargues
--- un volcado real de VALIDACIONES / PARADEROS.
--- ============================================================
+-- SIAPC - Semilla demo: estructura de tablas + datos minimos (catalogos, admin demo y modulos).
+-- Sin datos reales. Acceso demo -> usuario: admin / clave: admin123
 
 SET FOREIGN_KEY_CHECKS = 0;
 SET NAMES utf8mb4;
