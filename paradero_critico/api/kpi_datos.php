@@ -43,7 +43,8 @@ function baseSQL(string $ruta): string {
 function ejecutar($conexion, string $q, string $sentido, string $ruta): array {
     $stmt = $conexion->prepare($q);
     if (!$stmt) {
-        echo json_encode(['status' => 'error', 'message' => $conexion->error]);
+        error_log('KPI prepare error: ' . $conexion->error);
+        echo json_encode(['status' => 'error', 'message' => 'Error interno del servidor [E002].']);
         exit();
     }
     if ($ruta === 'TODAS') {
@@ -52,7 +53,8 @@ function ejecutar($conexion, string $q, string $sentido, string $ruta): array {
         $stmt->bind_param('ss', $sentido, $ruta);
     }
     if (!$stmt->execute()) {
-        echo json_encode(['status' => 'error', 'message' => $stmt->error]);
+        error_log('KPI execute error: ' . $stmt->error);
+        echo json_encode(['status' => 'error', 'message' => 'Error interno del servidor [E003].']);
         exit();
     }
     return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
@@ -177,7 +179,9 @@ try {
     }
 
 } catch (Exception $e) {
-    $response = ['status' => 'error', 'message' => $e->getMessage()];
+    // Detalle al log; al cliente mensaje generico (V-02)
+    error_log('Error en kpi_datos: ' . $e->getMessage());
+    $response = ['status' => 'error', 'message' => 'Error interno del servidor [E004].'];
 }
 
 echo json_encode($response, JSON_UNESCAPED_UNICODE);

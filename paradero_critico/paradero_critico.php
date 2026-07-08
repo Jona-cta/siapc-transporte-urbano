@@ -10,6 +10,12 @@ if (($usuario_rol ?? '') !== 'admin'
     exit();
 }
 
+// Token CSRF para proteger el endpoint de analisis (V-04)
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION['csrf_token'];
+
 // Las paginas fuera de perfil_usuario deben indicar la ruta base del layout
 $GLOBALS['cta_pu_base'] = '../perfil_usuario/';
 layout_inicio('Análisis de Paradero Crítico', 'paradero_critico');
@@ -53,6 +59,7 @@ layout_inicio('Análisis de Paradero Crítico', 'paradero_critico');
 
     <!-- Filtros -->
     <form id="filterForm" class="row g-3">
+        <input type="hidden" id="csrf" value="<?= htmlspecialchars($csrf_token) ?>">
         <div class="col-md-3">
             <label for="fecha" class="form-label">Fecha:</label>
             <input type="text" class="form-control" id="fecha" name="fecha" required>
@@ -102,6 +109,9 @@ layout_inicio('Análisis de Paradero Crítico', 'paradero_critico');
 </div>
 
 <script>
+    // Escapa texto para evitar XSS al insertar resultados en el DOM (V-01)
+    function esc(v){return String(v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
     document.addEventListener('DOMContentLoaded', function () {
         const fechaInput = document.getElementById('fecha');
         const rutaSelect = document.getElementById('ruta');
@@ -172,7 +182,7 @@ layout_inicio('Análisis de Paradero Crítico', 'paradero_critico');
             fetch('api/analisis_paradero_critico.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ fecha, ruta, sentido, paradero })
+                body: new URLSearchParams({ fecha, ruta, sentido, paradero, csrf: document.getElementById('csrf').value })
             })
             .then(response => response.json())
             .then(data => {
@@ -210,12 +220,12 @@ layout_inicio('Análisis de Paradero Crítico', 'paradero_critico');
                     <tbody>
                         ${recomendaciones.map(rec => `
                             <tr>
-                                <td>${rec.inicio}</td>
-                                <td>${rec.fin}</td>
-                                <td>${rec.cantidad_buses}</td>
-                                <td>${rec.exceso}</td>
+                                <td>${esc(rec.inicio)}</td>
+                                <td>${esc(rec.fin)}</td>
+                                <td>${esc(rec.cantidad_buses)}</td>
+                                <td>${esc(rec.exceso)}</td>
                                 <td>${rec.buses_adicionales > 0
-                                    ? `${rec.buses_adicionales} Bus(es) Adicional(es) Recomendado(s)`
+                                    ? `${esc(rec.buses_adicionales)} Bus(es) Adicional(es) Recomendado(s)`
                                     : 'No Requerido'}</td>
                             </tr>
                         `).join('')}
@@ -247,16 +257,16 @@ layout_inicio('Análisis de Paradero Crítico', 'paradero_critico');
                     <tbody>
                         ${recomendaciones.map(rec => `
                             <tr>
-                                <td colspan="5" class="text-center bg-secondary text-white">Entre ${rec.inicio} y ${rec.fin}</td>
+                                <td colspan="5" class="text-center bg-secondary text-white">Entre ${esc(rec.inicio)} y ${esc(rec.fin)}</td>
                             </tr>
                             ${rec.detalle.map(bus => `
                                 ${bus.paradero_lleno && bus.validaciones_hasta_paradero_critico >= 80 ? `
                                     <tr>
-                                        <td>${bus.id_carrera}</td>
-                                        <td>${bus.ruta}</td>
-                                        <td>${bus.hora_inicio}</td>
-                                        <td>${bus.paradero_lleno}</td>
-                                        <td>${bus.validaciones_hasta_paradero_critico}</td>
+                                        <td>${esc(bus.id_carrera)}</td>
+                                        <td>${esc(bus.ruta)}</td>
+                                        <td>${esc(bus.hora_inicio)}</td>
+                                        <td>${esc(bus.paradero_lleno)}</td>
+                                        <td>${esc(bus.validaciones_hasta_paradero_critico)}</td>
                                     </tr>
                                 ` : ''}
                             `).join('')}

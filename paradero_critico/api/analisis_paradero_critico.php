@@ -21,9 +21,16 @@ if (($_SESSION['usuario_rol'] ?? '') !== 'admin'
     exit();
 }
 
+// Proteccion CSRF (V-04): el token enviado debe coincidir con el de la sesion
+if (!hash_equals($_SESSION['csrf_token'] ?? '', $_POST['csrf'] ?? '')) {
+    echo json_encode(['status' => 'error', 'message' => 'Token de seguridad invalido. Recargue la pagina.']);
+    exit();
+}
+
 // Configurar charset
 if (!$conexion->set_charset("utf8mb4")) {
-    echo json_encode(['status' => 'error', 'message' => 'Error configurando la codificacion: ' . $conexion->error]);
+    error_log('Error set_charset: ' . $conexion->error);
+    echo json_encode(['status' => 'error', 'message' => 'Error interno del servidor [E001].']);
     exit();
 }
 
@@ -32,6 +39,15 @@ $fecha = $_POST['fecha'] ?? null;
 $ruta = $_POST['ruta'] ?? null;
 $sentido_texto = $_POST['sentido'] ?? null;
 $paradero_filtro = isset($_POST['paradero']) ? $_POST['paradero'] : null;
+
+// Validacion de formato de fecha en el servidor (V-03): debe ser AAAA-MM-DD real
+if ($fecha !== null && $fecha !== '') {
+    $fobj = DateTime::createFromFormat('Y-m-d', $fecha);
+    if (!$fobj || $fobj->format('Y-m-d') !== $fecha) {
+        echo json_encode(['status' => 'error', 'message' => 'Formato de fecha invalido. Use AAAA-MM-DD.']);
+        exit();
+    }
+}
 
 error_log("Paradero recibido: " . $paradero_filtro);
 error_log("Sentido recibido: " . $sentido_texto);
@@ -259,10 +275,16 @@ if ($fecha && $sentido_texto && $paradero_filtro) {
         ];
 
     } catch (Exception $e) {
-        error_log("Error en análisis: " . $e->getMessage());
+        // Se registra el detalle real en el log; al cliente solo mensajes de negocio seguros (V-02)
+        error_log("Error en analisis paradero critico: " . $e->getMessage());
+        $mensajes_seguros = ['Sentido no', 'No se encontraron paraderos previos'];
+        $mostrar = 'No se pudo completar el analisis. Intente nuevamente.';
+        foreach ($mensajes_seguros as $seg) {
+            if (stripos($e->getMessage(), $seg) !== false) { $mostrar = $e->getMessage(); break; }
+        }
         $response = [
             'status' => 'error',
-            'message' => $e->getMessage()
+            'message' => $mostrar
         ];
     }
 } else {
